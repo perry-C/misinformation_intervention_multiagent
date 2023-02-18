@@ -1,13 +1,13 @@
-from operator import itemgetter
-from ipysigma import Sigma
-import networkx as nx
-import random
-from tqdm import tqdm, trange
 import math
-import matplotlib.pyplot as plt
-import pandas as pd
-
+import random
 from itertools import combinations
+from operator import itemgetter
+
+import matplotlib.pyplot as plt
+import networkx as nx
+import pandas as pd
+from ipysigma import Sigma
+from tqdm import tqdm, trange
 
 
 def find_matching_pair(G: nx.Graph, nodes, v):

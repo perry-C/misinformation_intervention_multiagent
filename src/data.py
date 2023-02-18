@@ -1,11 +1,59 @@
-import random
-import numpy as np
-import networkx as nx
-import pandas as pd
 import os
+import random
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+from scipy.optimize import fsolve
+
+import config
+
+# Code provided by ChatGPT, an AI language model created by OpenAI, on February 17, 2023.
+
+
+def solve_ab(ab, ex):
+    a, b = ab
+    eq1 = ex * (a + b) - a
+    eq2 = (1 - ex) * (a + b) - b
+    return [eq1, eq2]
 
 
 class Data:
+    def generate_initial_beliefs():
+        '''
+        Generate the abs used for determining each agent's belief at the start of each simulation
+
+        "This rule basically distributes our agents evenly over the belief spectrum [0, 1] such that each
+        1/7 of the total mass of agents in the initial period."
+        '''
+
+        k = config.belief_distribution_groups
+
+        belief_intervals = np.linspace(0, 1, k + 1)
+
+        nodes_intervals = np.linspace(0, config.number_of_nodes, k + 1)
+
+        # Split the belief spectrum into 7 evenly distributed intervals along [0,1]
+        group_ranges = [(belief_intervals[i], belief_intervals[i + 1])
+                        for i, _ in enumerate(belief_intervals) if i != k]
+
+        # Split the nodes into K even groups
+        group_sizes = [round(nodes_intervals[i + 1]) - round(nodes_intervals[i])
+                       for i, _ in enumerate(nodes_intervals) if i != k]
+
+        initial_abs = []
+
+        for i in range(k):
+            for _ in range(group_sizes[i]):
+                lower, upper = group_ranges[i]
+                ex = random.uniform(lower, upper)
+                ab = fsolve(solve_ab, (1, 1), args=(ex,))
+                initial_abs.extend([ab])
+
+        random.shuffle(initial_abs)
+
+        return initial_abs
+
     def pickle_network(network_path):
         fb_network = open(f"{network_path}.txt", 'r').read()
         lines = fb_network.split("\n")
