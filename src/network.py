@@ -152,7 +152,7 @@ def modify_reciprocity(G):
             G.remove_edge(v, u)
 
 
-def generate_ego_network(n: int, m: int, seed):
+def generate_ego_network(d: int, p: float, seed):
     '''_summary_
     Args:
         n (_type_): number of nodes
@@ -161,16 +161,17 @@ def generate_ego_network(n: int, m: int, seed):
     '''
 
     # https://networkx.org/documentation/stable/reference/generated/networkx.generators.random_graphs.powerlaw_cluster_graph.html
-    plc_graph = nx.powerlaw_cluster_graph(n, m, 1, seed=seed)
-    # ba_graph = nx.barabasi_albert_graph(n, m, seed=seed)
+    # graph = nx.powerlaw_cluster_graph(n, m, 1, seed=seed)
+    # graph = nx.barabasi_albert_graph(n, m, seed=seed)
+    graph = nx.erdos_renyi_graph(d, p, seed=seed)
 
     # find node with largest degree
-    node_and_degree = plc_graph.degree()
+    node_and_degree = graph.degree()
 
     (largest_hub, degree) = sorted(node_and_degree, key=itemgetter(1))[-1]
 
     # Create ego graph
-    ego_network = nx.ego_graph(plc_graph, largest_hub)
+    ego_network = nx.ego_graph(graph, largest_hub)
 
     ego_network = ego_network.to_directed()
 
@@ -185,7 +186,7 @@ def generate_ego_network(n: int, m: int, seed):
 
 def get_network_stats(G: nx.Graph):
 
-    average_clustering = nx.average_clustering(G.to_undirected())
+    average_clustering = nx.average_clustering(G)
     print()
     average_in_degree = sum(
         [y for (x, y) in G.in_degree]) / G.number_of_nodes()

@@ -30,7 +30,6 @@ class SocialAgent(mesa.Agent):
 
         self.a = agent_parameter.a
         self.b = agent_parameter.b
-        random.seed(agent_parameter.seed)
 
         '''
         Each agent starts with a prior belief θi, 0 assumed to follow a Beta distribution, for both a,b > 0
@@ -111,12 +110,10 @@ class RegularAgent(SocialAgent):
     def get_neighbors(self):
         '''
         There exists one essential difference between regular agents and bot followers:
-        Regular agent can distinguish thus filtering out the bots
+        Regular agent can distinguish thus filtering out the bots, hence it follows the 
+        implementation of the base method
         '''
-
-        not_bots = [n for n in super().get_neighbors()
-                    if n.agent_type != AgentType.LWB | n.agent_type != AgentType.RWB]
-        return not_bots
+        return super().get_neighbors()
 
 
 class BotFollower(SocialAgent):
@@ -126,16 +123,23 @@ class BotFollower(SocialAgent):
     information transmitted by bots, and hence are exposed to fake news.'
     '''
 
-    def __init__(self, unique_id, model, agentParamter: AgentParameter):
+    def __init__(self, unique_id, model, agentParamter: AgentParameter, bot_id):
         super().__init__(unique_id, model, agentParamter)
         self.agent_type = AgentType.BF
+        self.bot_id = bot_id
 
     def get_neighbors(self):
         '''
         Whereas bot followers can not extinguish between real people and bots,
-        so no filtering is done, and the method remain the same as the base class
+        so no filtering is done, and additionally each bot follower will listen to
+        the one of the bot-types, depending on their own views of that matter 
+        (e.g. more left-oriented people will follow the L-bot)   
         '''
-        return super().get_neighbors()
+
+        neighbors = super().get_neighbors()
+        bot_followed = self.model.get_agent(self.bot_id)
+        neighbors.extend([bot_followed])
+        return neighbors
 
 
 class LeftWingBot(SocialAgent):

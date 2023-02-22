@@ -8,8 +8,6 @@ from scipy.optimize import fsolve
 
 import config
 
-# Code provided by ChatGPT, an AI language model created by OpenAI, on February 17, 2023.
-
 
 def solve_ab(ab, ex):
     a, b = ab
@@ -19,7 +17,7 @@ def solve_ab(ab, ex):
 
 
 class Data:
-    def generate_initial_beliefs():
+    def generate_agent_beliefs():
         '''
         Generate the abs used for determining each agent's belief at the start of each simulation
 
@@ -41,18 +39,29 @@ class Data:
         group_sizes = [round(nodes_intervals[i + 1]) - round(nodes_intervals[i])
                        for i, _ in enumerate(nodes_intervals) if i != k]
 
-        initial_abs = []
+        agent_abs = []
 
         for i in range(k):
             for _ in range(group_sizes[i]):
                 lower, upper = group_ranges[i]
                 ex = random.uniform(lower, upper)
                 ab = fsolve(solve_ab, (1, 1), args=(ex,))
-                initial_abs.extend([ab])
+                agent_abs.extend([ab])
 
-        random.shuffle(initial_abs)
+        random.shuffle(agent_abs)
 
-        return initial_abs
+        return agent_abs
+
+    def generate_bot_beliefs():
+        '''
+        We assume that L bot and R bot each follow the 
+        initial belief of 0.4 and 0.6, 
+        disguising as themselves as regular agent
+        '''
+
+        l_bot_ab = fsolve(solve_ab, (1, 1), args=(0.4))
+        r_bot_ab = fsolve(solve_ab, (1, 1), args=(0.6))
+        return l_bot_ab, r_bot_ab
 
     def pickle_network(network_path):
         fb_network = open(f"{network_path}.txt", 'r').read()
