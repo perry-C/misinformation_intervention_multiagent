@@ -1,0 +1,19 @@
+name: Put issues labeled icebox to icebox column
+
+on:
+  issues:
+    types:
+      - labeled
+
+jobs:
+  add-to-project:
+    name: Put issues labeled icebox to icebox column
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@v0.41
+        with:
+          # You can target a repository in a different organization
+          # to the issue
+          project-url: https://github.com/users/perry-C/projects/1/views/1
+          github-token: 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
+          labeled: icebox
