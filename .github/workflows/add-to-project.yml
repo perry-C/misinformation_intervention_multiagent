@@ -10,9 +10,9 @@ jobs:
     name: Add issue to project
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/add-to-project@v0.0.5
+      - uses: actions/add-to-project@v0.4.1
         with:
           # You can target a repository in a different organization
           # to the issue
           project-url: https://github.com/users/perry-C/projects/1
-          github-token: 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
+          github-token: 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
