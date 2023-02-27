@@ -15,4 +15,4 @@ jobs:
           # You can target a repository in a different organization
           # to the issue
           project-url: https://github.com/users/perry-C/projects/1
-          github-token: ${{ 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 }}
+          github-token: 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
