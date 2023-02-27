@@ -25,7 +25,6 @@ class SocialModel(mesa.Model):
         self.num_regular_agents = self.G.number_of_nodes() - self.num_bot_followers
         self.l_bot_id = self.G.number_of_nodes()
         self.r_bot_id = self.G.number_of_nodes()+1
-        self.misinformation = 0
 
         for _ in range(self.num_l_bot_followers):
             a = BotFollower(self.get_id(), self,
@@ -48,15 +47,16 @@ class SocialModel(mesa.Model):
         self.schedule.add(r_bot)
 
         # print(self.get_agents())
-    '''
-    Add something about the Bernoulli clock here
-    '''
 
     def step(self):
         self.schedule.step()
         self.misinformation = Metric.misinformation(self)
-        print(
-            f'There exists {self.misinformation} level of misinformation within the society')
+        self.average_opinion = Metric.average_opinion(self)
+
+        message = f'''The society has {self.misinformation} amount of misinformation, 
+                      {self.average_opinion} amount of average opinion'''
+
+        print(message)
 
     def get_agent(self, unique_id):
         '''Helper function for retrieving specific agent

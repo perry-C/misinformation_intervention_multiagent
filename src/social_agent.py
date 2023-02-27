@@ -9,6 +9,7 @@ from scipy.stats import beta
 import config
 from agent_type import AgentType
 from parameter import AgentParameter
+from utils import *
 
 
 class SocialAgent(mesa.Agent):
@@ -17,23 +18,19 @@ class SocialAgent(mesa.Agent):
         super().__init__(unique_id, model)
         self.model = model
         self.G = model.G
-        self.adjacency_matrix = nx.adjacency_matrix(model.G)
+        # self.adjacency_matrix = nx.adjacency_matrix(model.G)
         self.agent_type = None
 
         # self.polarisation = random.random()
 
-        self.influence_of_friends = random.random()
-        '''
-        An agent pays attention to two things:
-        information shared by the unbiased source and those shared by its friends
-        '''
+        # An agent pays attention to two things: information shared by the unbiased source
+        # and those shared by its friends
 
+        self.influence_of_friends = random.random()
+
+        # Each agent starts with a prior belief θi, 0 assumed to follow a Beta distribution, for both a,b > 0
         self.a = agent_parameter.a
         self.b = agent_parameter.b
-
-        '''
-        Each agent starts with a prior belief θi, 0 assumed to follow a Beta distribution, for both a,b > 0
-        '''
 
         # self.world_view = beta.stats(self.a, self.b)
 
@@ -46,14 +43,17 @@ class SocialAgent(mesa.Agent):
         Returns:
             list[SocialAgents]
         '''
+
+        # Filtering out neighbors based on result from a bernoulli draw
+        # models the fact that a human is not likely to pay attention to every single piece of information
         neighbors = [self.model.get_agent(
-            n) for n in nx.neighbors(self.G, self.unique_id)]
+            n) for n in nx.neighbors(self.G, self.unique_id) if bernoulli_draw()]
+
         return neighbors
 
     def update_belief(self):
         '''
         The base class provides the update rules for regular agents and bot followers
-
         The bot class does not share the same update rule (which will override the base method)
         '''
         as_from_neighbors = sum(n.a for n in self.get_neighbors())
@@ -137,8 +137,12 @@ class BotFollower(SocialAgent):
         '''
 
         neighbors = super().get_neighbors()
-        bot_followed = self.model.get_agent(self.bot_id)
-        neighbors.extend([bot_followed])
+        # As bot will disguise ieself as an authentic user,
+        # it is under the same influence as the other agents
+        # Hence it is likely to be ignored as well
+        if bernoulli_draw():
+            bot_followed = self.model.get_agent(self.bot_id)
+            neighbors.extend([bot_followed])
         return neighbors
 
 
