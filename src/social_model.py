@@ -48,7 +48,9 @@ class SocialModel(mesa.Model):
 
         self.data_collector = DataCollector(model_reporters={'polarization': lambda m: Metric.polarization(m),
                                                              'misinformation': lambda m: Metric.misinformation(m),
-                                                             'average_opinion': lambda m: Metric.average_opinion(m),
+                                                             'average_opinion_all': lambda m: Metric.average_opinion_all(m),
+                                                             'average_opinion_left': lambda m: Metric.average_opinion_left(m),
+                                                             'average_opinion_right': lambda m: Metric.average_opinion_right(m),
                                                              },
                                             # agent_reporters={'opinion': lambda a: a.calculate_opinion()}
                                             )

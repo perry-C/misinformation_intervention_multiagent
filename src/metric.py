@@ -67,7 +67,17 @@ class Metric:
         polarization = sum(group_wise_pols)
         return polarization
 
-    def average_opinion(model):
+    def average_opinion_all(model):
         average_opinion = mean(
             [a.calculate_opinion() for a in model.get_agents()])
+        return average_opinion
+
+    def average_opinion_left(model):
+        average_opinion = mean(
+            [a.calculate_opinion() for a in model.get_agents() if a.bot_id == model.l_bot_id])
+        return average_opinion
+
+    def average_opinion_right(model):
+        average_opinion = mean(
+            [a.calculate_opinion() for a in model.get_agents() if a.bot_id == model.r_bot_id])
         return average_opinion

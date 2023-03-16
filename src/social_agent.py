@@ -25,7 +25,7 @@ class SocialAgent(mesa.Agent):
         # and those shared by its friends
 
         self.influence_of_friends = 0.5
-
+        self.bot_id = None
         # Each agent starts with a prior belief θi, 0 assumed to follow a Beta distribution, for both a,b > 0
         self.a = agent_parameter.a
         self.b = agent_parameter.b
