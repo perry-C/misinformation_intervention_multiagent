@@ -19,11 +19,10 @@ class Metric:
         Original definition from Esteban94
         '''
 
-        # Initialise K groups
-        K = config.belief_distribution_groups
+        # Initialise 7 groups
         alpha = 0.5
         groups = [np.array([])
-                  for _ in range(K)]
+                  for _ in range(config.belief_distribution_groups)]
 
         # Distribute all agents into the corresponding group based on their opinion
         opinions = [a.calculate_opinion()
@@ -32,7 +31,7 @@ class Metric:
         lower = min(opinions)
         upper = max(opinions)
 
-        opinion_intervals = get_intervals(lower, upper, K)
+        opinion_intervals = get_intervals(lower, upper, len(groups))
 
         for op in opinions:
             for i, interval in enumerate(opinion_intervals):
@@ -40,21 +39,19 @@ class Metric:
                 if low <= op <= high:
                     groups[i] = np.append(groups[i], op)
                     break
-                if i == K - 1:
-                    print(op)
 
         group_wise_pols = []
 
         # Implement the formula
-        for i in range(K):
-            for j in range(K):
-                k_ratio = len(groups[i]) / \
+        for i in range(config.belief_distribution_groups):
+            for j in range(config.belief_distribution_groups):
+                i_ratio = len(groups[i]) / \
                     model.schedule.get_agent_count()
 
-                l_ratio = len(groups[j]) / \
+                j_ratio = len(groups[j]) / \
                     model.schedule.get_agent_count()
-                k_average_opinion = np.average(groups[i])
-                l_average_opinion = np.average(groups[j])
+                i_average_opinion = np.average(groups[i])
+                j_average_opinion = np.average(groups[j])
 
                 '''
                 from azzimonti2022social:
@@ -63,8 +60,8 @@ class Metric:
                 '''
                 K = 1 / (2 * (0.5) ** (2 + alpha))
 
-                group_wise_pol = k_ratio ** (1+alpha) * l_ratio * \
-                    abs(k_average_opinion - l_average_opinion) * norm
+                group_wise_pol = K * i_ratio ** (1+alpha) * j_ratio * \
+                    abs(i_average_opinion - j_average_opinion)
                 group_wise_pols.extend([group_wise_pol])
 
         polarization = sum(group_wise_pols)
