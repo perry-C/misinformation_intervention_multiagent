@@ -4,64 +4,44 @@ import random
 import networkx as nx
 import numpy as np
 import pandas as pd
-from scipy.optimize import fsolve
 
 import config
-
-
-def solve_ab(ab, ex):
-    a, b = ab
-    eq1 = ex * (a + b) - a
-    eq2 = (1 - ex) * (a + b) - b
-    return [eq1, eq2]
+from utils import compute_ab, get_intervals
+from parameter import AgentParameter
 
 
 class Data:
-    def generate_agent_beliefs():
+    def generate_agent_params(seed=int):
         '''
         Generate the abs used for determining each agent's belief at the start of each simulation
 
         "This rule basically distributes our agents evenly over the belief spectrum [0, 1] such that each
         1/7 of the total mass of agents in the initial period."
         '''
+        random.seed(seed)
+        K = config.belief_distribution_groups
 
-        k = config.belief_distribution_groups
+        nodes_intervals = np.linspace(
+            0, config.agent_number + config.bot_number, K + 1)
 
-        belief_intervals = np.linspace(0, 1, k + 1)
-
-        nodes_intervals = np.linspace(0, config.number_of_nodes, k + 1)
-
-        # Split the belief spectrum into 7 evenly distributed intervals along [0,1]
-        group_ranges = [(belief_intervals[i], belief_intervals[i + 1])
-                        for i, _ in enumerate(belief_intervals) if i != k]
+        # Split the belief spectrum into K (7) evenly distributed intervals along [0,1]
+        belief_intervals = get_intervals(0, 1, K)
 
         # Split the nodes into K even groups
         group_sizes = [round(nodes_intervals[i + 1]) - round(nodes_intervals[i])
-                       for i, _ in enumerate(nodes_intervals) if i != k]
+                       for i, _ in enumerate(nodes_intervals) if i != K]
 
-        agent_abs = []
+        agent_params = []
 
-        for i in range(k):
-            for _ in range(group_sizes[i]):
-                lower, upper = group_ranges[i]
+        for group_index in range(K):
+            for _ in range(group_sizes[group_index]):
+                lower, upper = belief_intervals[group_index]
                 ex = random.uniform(lower, upper)
-                ab = fsolve(solve_ab, (1, 1), args=(ex,))
-                agent_abs.extend([ab])
+                a, b = compute_ab(ex)
+                agent_params.extend([AgentParameter(a, b)])
+        random.shuffle(agent_params)
 
-        random.shuffle(agent_abs)
-
-        return agent_abs
-
-    def generate_bot_beliefs():
-        '''
-        We assume that L bot and R bot each follow the 
-        initial belief of 0.4 and 0.6, 
-        disguising as themselves as regular agent
-        '''
-
-        l_bot_ab = fsolve(solve_ab, (1, 1), args=(0.4))
-        r_bot_ab = fsolve(solve_ab, (1, 1), args=(0.6))
-        return l_bot_ab, r_bot_ab
+        return agent_params
 
     def pickle_network(network_path):
         fb_network = open(f"{network_path}.txt", 'r').read()

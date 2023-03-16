@@ -1,5 +1,5 @@
+import math
 import random
-from abc import abstractmethod
 
 import mesa
 import networkx as nx
@@ -9,7 +9,7 @@ from scipy.stats import beta
 import config
 from agent_type import AgentType
 from parameter import AgentParameter
-from utils import *
+from utils import coin_flip
 
 
 class SocialAgent(mesa.Agent):
@@ -21,12 +21,10 @@ class SocialAgent(mesa.Agent):
         # self.adjacency_matrix = nx.adjacency_matrix(model.G)
         self.agent_type = None
 
-        # self.polarisation = random.random()
-
         # An agent pays attention to two things: information shared by the unbiased source
         # and those shared by its friends
 
-        self.influence_of_friends = random.random()
+        self.influence_of_friends = 0.5
 
         # Each agent starts with a prior belief θi, 0 assumed to follow a Beta distribution, for both a,b > 0
         self.a = agent_parameter.a
@@ -35,7 +33,9 @@ class SocialAgent(mesa.Agent):
         # self.world_view = beta.stats(self.a, self.b)
 
     def calculate_opinion(self):
-        opinion = round(self.a / (self.a + self.b), 6)
+        opinion = beta.mean(self.a, self.b)
+        if math.isnan(opinion):
+            opinion = 0
         return opinion
 
     def get_neighbors(self):
@@ -47,7 +47,7 @@ class SocialAgent(mesa.Agent):
         # Filtering out neighbors based on result from a bernoulli draw
         # models the fact that a human is not likely to pay attention to every single piece of information
         neighbors = [self.model.get_agent(
-            n) for n in nx.neighbors(self.G, self.unique_id) if bernoulli_draw()]
+            n) for n in nx.neighbors(self.G, self.unique_id) if coin_flip()]
 
         return neighbors
 
@@ -79,7 +79,7 @@ class SocialAgent(mesa.Agent):
         '''
 
         if binomial(1, 0.5, 1):
-            return self.model.truth
+            return config.truth
         else:
             return 0
 
@@ -97,9 +97,6 @@ class SocialAgent(mesa.Agent):
         Every agent in this model receives info from unbias sources,
         however, some might ignore it like the bot
         '''
-
-        print(f"agent {self.unique_id} has \
-              {self.calculate_opinion()} of opinion")
 
 
 class RegularAgent(SocialAgent):
@@ -137,10 +134,8 @@ class BotFollower(SocialAgent):
         '''
 
         neighbors = super().get_neighbors()
-        # As bot will disguise ieself as an authentic user,
-        # it is under the same influence as the other agents
-        # Hence it is likely to be ignored as well
-        if bernoulli_draw():
+        # The user will pay attention to information spread by bot also by chance
+        if coin_flip():
             bot_followed = self.model.get_agent(self.bot_id)
             neighbors.extend([bot_followed])
         return neighbors

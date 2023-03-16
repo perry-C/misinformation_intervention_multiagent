@@ -2,6 +2,8 @@ import random
 
 import mesa
 import networkx as nx
+import numpy as np
+from mesa import DataCollector
 from tqdm import tqdm
 
 import config
@@ -11,12 +13,10 @@ from social_agent import BotFollower, LeftWingBot, RegularAgent, RightWingBot
 
 
 class SocialModel(mesa.Model):
-    def __init__(self, G: nx.Graph, agents_params: list[AgentParameter],
-                 l_bot_params: AgentParameter, r_bot_params: AgentParameter):
+    def __init__(self, G: nx.Graph, agents_params: list[AgentParameter]):
         self.G = G
         self.agents_params = agents_params
         self.schedule = mesa.time.RandomActivation(self)
-        self.truth = random.random()
         self.num_bot_followers = round(
             self.G.number_of_nodes() * config.bot_follower_percentage)
         self.num_l_bot_followers = round(
@@ -40,23 +40,23 @@ class SocialModel(mesa.Model):
             a = RegularAgent(self.get_id(), self, self.agents_params.pop())
             self.schedule.add(a)
 
-        l_bot = LeftWingBot(self.l_bot_id, self, l_bot_params)
-        r_bot = RightWingBot(self.r_bot_id, self, r_bot_params)
+        l_bot = LeftWingBot(self.l_bot_id, self, self.agents_params.pop())
+        r_bot = RightWingBot(self.r_bot_id, self, self.agents_params.pop())
 
         self.schedule.add(l_bot)
         self.schedule.add(r_bot)
 
-        # print(self.get_agents())
+        self.data_collector = DataCollector(model_reporters={'polarization': lambda m: Metric.polarization(m),
+                                                             'misinformation': lambda m: Metric.misinformation(m),
+                                                             'average_opinion': lambda m: Metric.average_opinion(m),
+                                                             },
+                                            # agent_reporters={'opinion': lambda a: a.calculate_opinion()}
+                                            )
 
     def step(self):
+
+        self.data_collector.collect(self)
         self.schedule.step()
-        self.misinformation = Metric.misinformation(self)
-        self.average_opinion = Metric.average_opinion(self)
-
-        message = f'''The society has {self.misinformation} amount of misinformation, 
-                      {self.average_opinion} amount of average opinion'''
-
-        print(message)
 
     def get_agent(self, unique_id):
         '''Helper function for retrieving specific agent
