@@ -2,9 +2,11 @@ import math
 import random
 from itertools import combinations
 from operator import itemgetter
+from statistics import mean
 
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import pandas as pd
 from ipysigma import Sigma
 from tqdm import tqdm, trange
@@ -108,7 +110,7 @@ def increase_clustering_coefficient(G: nx.Graph, tcc):
         cc(float): target clustering coefficient
     '''
 
-    acc = nx.average_clustering(G)
+    acc = nx.transitivity(G)
 
     '''
     the process will be repeated until the average clustering coefficient
@@ -117,7 +119,7 @@ def increase_clustering_coefficient(G: nx.Graph, tcc):
 
     while acc < tcc:
         # Recalculate every loop
-        acc = nx.average_clustering(G)
+        acc = nx.transitivity(G)
         # pick five node comforming to the 5 conditions
         x, w, y, z, v = pick_five_nodes(G)
         rewire_edges(G, x, w, y, z)
@@ -197,7 +199,7 @@ def modify_reciprocity(G: nx.DiGraph):
         #         G.add_edge(v, not_connected_node)
 
 
-def generate_ego_network(d: int, p: float, seed):
+def generate_ego_network(n: int, m: float, p: float, seed: int):
     '''_summary_
     Args:
         n (_type_): number of nodes
@@ -206,19 +208,18 @@ def generate_ego_network(d: int, p: float, seed):
     '''
 
     # https://networkx.org/documentation/stable/reference/generated/networkx.generators.random_graphs.powerlaw_cluster_graph.html
-    # graph = nx.powerlaw_cluster_graph(n, m, 1, seed=seed)
-    # graph = nx.barabasi_albert_graph(n, m, seed=seed)
-    graph = nx.erdos_renyi_graph(d, p, seed=seed)
+    graph = nx.powerlaw_cluster_graph(
+        n, m, p, seed=seed)
 
     # find node with largest degree
     node_and_degree = graph.degree()
 
-    (largest_hub, degree) = sorted(node_and_degree, key=itemgetter(1))[-1]
+    # (largest_hub, degree) = sorted(node_and_degree, key=itemgetter(1))[-1]
 
     # Create ego graph
-    ego_network = nx.ego_graph(graph, largest_hub)
+    # ego_network = nx.ego_graph(graph, largest_hub)
 
-    ego_network = ego_network.to_directed()
+    # ego_network = ego_network.to_directed()
 
     # # Set attributes of nodes for clarity
     # attributes = {n: {'identity': (
@@ -226,7 +227,34 @@ def generate_ego_network(d: int, p: float, seed):
 
     # nx.set_node_attributes(ego_network, attributes)
 
-    return ego_network
+    return graph
+
+
+def compute_average_path_length(G: nx.Graph):
+    component_lengths = []
+
+    if G.is_directed():
+        components = nx.strongly_connected_components(G)
+
+    else:
+        components = nx.connected_components(G)
+
+    for component in components:
+
+        component = G.subgraph(component)
+        nodes = component.nodes()
+        lengths = []
+
+        for _ in range(10000):
+            n1, n2 = random.choices(list(nodes), k=2)
+            length = nx.shortest_path_length(
+                component, source=n1, target=n2)
+            lengths.append(length)
+
+        # Collect component-level avearge lengths for computing graph-level average
+        component_lengths.append(mean(lengths))
+
+    return mean(component_lengths)
 
 
 def get_network_stats(G: nx.Graph, show_graph=False):
@@ -234,39 +262,32 @@ def get_network_stats(G: nx.Graph, show_graph=False):
     average_degree = sum(
         [y for (x, y) in G.degree]) / G.number_of_nodes()
     average_in_degree = None
-
+    average_path_length = compute_average_path_length(G)
     if G.is_directed():
+
         if not nx.is_strongly_connected(G):
+            print('The graph is not strongly connected')
             largest_subgraph = G.subgraph(
                 max(nx.strongly_connected_components(G), key=len))
-            diameter = nx.diameter(largest_subgraph)
-        else:
-            diameter = nx.diameter(G)
+            diameter = nx.approximation.diameter(largest_subgraph)
 
+        else:
+            diameter = nx.approximation.diameter(G)
         average_in_degree = sum(
             [y for (x, y) in G.in_degree]) / G.number_of_nodes()
     else:
-        diameter = nx.diameter(G)
+        diameter = nx.approximation.diameter(G)
 
-    stats_message = f'  number of nodes: {G.number_of_nodes()}, \
-                        number of edges: {G.number_of_edges()}, \
-                        average clustering coefficient: {nx.transitivity(G.to_undirected())}, \
-                        reciprocity: {reciprocity}, \
-                        average degree: {average_degree} \
-                        diameter: {diameter}, \
-                        average path length: {nx.average_shortest_path_length(G.to_undirected())} \
-                        average in degree: {average_in_degree} \
-                     '
-
-    print(stats_message)
+    stat_info = {'number_of_nodes': G.number_of_nodes(),
+                 'number_of_edges': G.number_of_edges(),
+                 'average_clustering_coefficient': nx.average_clustering(G.to_undirected()),
+                 'reciprocity': reciprocity,
+                 'average_degree': average_degree,
+                 'diameter': diameter,
+                 'average_path_length': average_path_length,
+                 'average_in_degree': average_in_degree,
+                 }
 
     if show_graph:
         nx.draw(G,  node_color='black', node_size=0.1, with_labels=False)
-
-
-def network_to_csv(G):
-    # create a DataFrame from the graph
-    df = pd.DataFrame(G.edges(), columns=['source', 'target'])
-
-    # save the DataFrame as a CSV file
-    df.to_csv('data/ego_net.csv', index=False)
+    return stat_info
