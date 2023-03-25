@@ -10,9 +10,9 @@ from scipy.stats import beta
 import config
 
 
-def convert_csv_to_graph(file: str, whole=False):
+def convert_csv_to_graph(file: str, sep=' ', whole=False):
     with open(file, 'r') as fp:
-        edge_df = pd.read_csv(fp, header=None, sep=' ')
+        edge_df = pd.read_csv(fp, header=None, sep=sep)
         edge_list = list(zip(edge_df[0].to_list(), edge_df[1].to_list()))
         ego_net = nx.DiGraph(edge_list)
 

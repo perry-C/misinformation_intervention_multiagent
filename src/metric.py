@@ -1,3 +1,4 @@
+import math
 from statistics import mean
 
 import numpy as np
@@ -62,9 +63,11 @@ class Metric:
 
                 group_wise_pol = K * i_ratio ** (1+alpha) * j_ratio * \
                     abs(i_average_opinion - j_average_opinion)
+
                 group_wise_pols.extend([group_wise_pol])
 
-        polarization = sum(group_wise_pols)
+        polarization = sum(
+            [0 if math.isnan(pol) else pol for pol in group_wise_pols])
         return polarization
 
     def average_opinion_all(model):
@@ -73,11 +76,19 @@ class Metric:
         return average_opinion
 
     def average_opinion_left(model):
-        average_opinion = mean(
-            [a.calculate_opinion() for a in model.get_agents() if a.bot_id == model.l_bot_id])
+        try:
+            average_opinion = mean(
+                [a.calculate_opinion() for a in model.get_agents() if a.bot_id == model.l_bot_id])
+        except:
+            average_opinion = 0
+
         return average_opinion
 
     def average_opinion_right(model):
-        average_opinion = mean(
-            [a.calculate_opinion() for a in model.get_agents() if a.bot_id == model.r_bot_id])
+        try:
+            average_opinion = mean(
+                [a.calculate_opinion() for a in model.get_agents() if a.bot_id == model.r_bot_id])
+        except:
+            average_opinion = 0
+
         return average_opinion

@@ -45,24 +45,12 @@ def get_unique_edges(edges):
     return list(set([(u, v) if u <= v else (v, u) for u, v in edges]))
 
 
-def get_possible_edges(e0, e1, ego_net: nx.Graph, new_nodes: list[int]):
-    '''
-    These then have to be linked at random with each other and with those
-    nodes in N(e0) that are neighbours of e1.
-    '''
+def set_new_edges(new_nodes, e1, ego_net: nx.Graph, d, rho):
 
     possible_nodes = new_nodes
-    possible_nodes.extend([n for n in nx.all_neighbors(
-        ego_net, e0) if ego_net.has_edge(n, e1)])
-    possible_edges = get_unique_edges(powerset_of_2(possible_nodes))
+    possible_nodes.extend(n for n in nx.all_neighbors(
+        ego_net, e1))
 
-    # Filter self-looping edges
-    possible_edges = [(u, v) for u, v in possible_edges if u != v]
-
-    return possible_edges
-
-
-def set_new_edges(e0, e1, ego_net: nx.Graph, possible_edges, d, rho):
     '''
     The number of these edges is given by the
     required density of N(e1), i.e. d * (d - 1) * rho/2 - |E(N(e1))|
@@ -71,24 +59,17 @@ def set_new_edges(e0, e1, ego_net: nx.Graph, possible_edges, d, rho):
     of edges between the neighbours of e1, which initially lie completely in N (e0).
     '''
 
-    neighbors_of_e0 = list(nx.all_neighbors(ego_net, e0))
     neighbors_of_e1 = list(nx.all_neighbors(ego_net, e1))
 
-    ENe1 = sum([list(ego_net.edges(n))
-               for n in neighbors_of_e1], [])
+    ENe1 = ego_net.subgraph(neighbors_of_e1).edges()
 
-    # Remove duplicate edges e.g. (2, 0) and (0,2) are the same
-    ENe1 = get_unique_edges(ENe1)
+    num_set_edges = int(d * (d-1) * rho // 2 - len(ENe1))
 
-    # Keep only those edges completely within neighbours of e0
-    ENe1 = [(u, v)
-            for u, v in ENe1 if (u in neighbors_of_e0) and (v in neighbors_of_e0)]
-
-    num_set_edges = clamp(
-        int(d * (d-1) * rho // 2 - len(ENe1)), 0, len(possible_edges))
-
-    for u, v in random.sample(possible_edges, num_set_edges):
-        ego_net.add_edge(u, v)
+    while num_set_edges > 0:
+        u, v = random.sample(possible_nodes, 2)
+        if not ego_net.has_edge(u, v):
+            ego_net.add_edge(u, v)
+            num_set_edges -= 1
 
 
 def get_incomplete_nodes(ego_net, d):
@@ -142,23 +123,21 @@ rho = config.average_clustering_coefficient
 p = 0.85
 seed_list = range(10)
 
-increase_steps = 200
-decrease_steps = 400
+increase_steps = 20
+decrease_steps = 40
 
 
 # Network generation process
 
 '''
 The general procedure is to start with a random ego-network N (e0 ) with d and ρ taken
-from the probability distributions (the “seed network”). 
+from the probability distributions (the “seed network”).
 '''
 
 for seed in tqdm(seed_list):
-    G = nx.erdos_renyi_graph(d, p, seed=seed)
+    ego_net = nx.erdos_renyi_graph(d, p, seed=seed)
     # find node with largest degree
-    e0 = get_largest_hub(G)
-
-    ego_net: nx.Graph = nx.ego_graph(G, e0)
+    e0 = get_largest_hub(ego_net)
 
     '''
     with all nodes additionally
@@ -178,9 +157,10 @@ for seed in tqdm(seed_list):
     from scratch. These then have to be linked at random with each other and with those
     nodes in N (e0 ) that are neighbours of e1.
     '''
-    get_network_stats(ego_net)
 
-    # 1. Increase step
+    # ---------------------------------------------------------------------------
+    #                            1. Increase step
+    # ---------------------------------------------------------------------------
 
     step = 0
     while step < increase_steps:
@@ -191,13 +171,18 @@ for seed in tqdm(seed_list):
 
         new_nodes = create_new_nodes(ego_net, num_missing_nodes, e1)
 
-        possible_edges = get_possible_edges(e0, e1, ego_net, new_nodes)
-        set_new_edges(e0, e1, ego_net, possible_edges, d, rho)
+        set_new_edges(new_nodes, e1, ego_net, d, rho)
 
         e0 = e1
         step += 1
 
-    # 2. Decrease step
+    print(get_network_stats(ego_net, show_graph=True))
+
+    import sys
+    sys.exit()
+    # ---------------------------------------------------------------------------
+    #                            2. Decrease step
+    # ---------------------------------------------------------------------------
 
     step = 0
     while step < decrease_steps:
@@ -206,7 +191,7 @@ for seed in tqdm(seed_list):
         num_missing_nodes = d - ego_net.degree[e1]
 
         '''
-        During the decrease stage, we reduce the amount of new nodes, 
+        During the decrease stage, we reduce the amount of new nodes,
         while taking the rest from the exisiting nodes, conforming to 2 restrictions
         '''
         num_new_nodes = round((1 - step/decrease_steps) * num_missing_nodes)
@@ -218,17 +203,17 @@ for seed in tqdm(seed_list):
         ...But only those are allowed which fulfill the requirements: (i) the degree d(ei)
         must be smaller than d, and (ii) they must not be in one of the ego-networks that the
         current ego-node ej is already in
-        
+
         How do we find out that the existing node is not inside any of the network of the
         current ego node?
-        
+
         1. find all the networks that e1 is in:
-            follow up: How do we know that? 
+            follow up: How do we know that?
         2. excluding that from the exisiting nodes list
-        
+
         I mean the definition of an ego network is the central node and its direct neighbors right?
         So we just have to filter out all the ego networks formed by e1's direct neighbors, since any
-        thing beyond that is not going to form a large enough ego network that would overlap e1   
+        thing beyond that is not going to form a large enough ego network that would overlap e1
         '''
 
         qualified_nodes = get_qualified_nodes(ego_net, d, e1)
@@ -238,13 +223,15 @@ for seed in tqdm(seed_list):
 
         new_nodes.extend(random.sample(qualified_nodes, num_sample_nodes))
 
-        possible_edges = get_possible_edges(e0, e1, ego_net, new_nodes)
-        set_new_edges(e0, e1, ego_net, possible_edges, d, rho)
+        possible_edges = get_possible_edges(e1, ego_net, new_nodes)
+        set_new_edges(e1, ego_net, possible_edges, d, rho)
 
         e0 = e1
         step += 1
 
-    # 3. Completion step
+    # ---------------------------------------------------------------------------
+    #                            3. Completion step
+    # ---------------------------------------------------------------------------
 
     skipped_nodes = []
 
@@ -260,13 +247,13 @@ for seed in tqdm(seed_list):
         num_missing_nodes = clamp(
             d - ego_net.degree[e1], 0, len(qualified_nodes))
         new_nodes = random.sample(qualified_nodes, num_missing_nodes)
-        possible_edges = get_possible_edges(e0, e1, ego_net, new_nodes)
+        possible_edges = get_possible_edges(e1, ego_net, new_nodes)
 
         if not possible_edges:
             skipped_nodes.extend([e1])
             continue
 
-        set_new_edges(e0, e1, ego_net, possible_edges, d, rho)
+        set_new_edges(e1, ego_net, possible_edges, d, rho)
         e0 = e1
 
         # if (nx.transitivity(ego_net)) <= rho:

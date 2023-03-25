@@ -9,7 +9,7 @@ from scipy.stats import beta
 import config
 from agent_type import AgentType
 from parameter import AgentParameter
-from utils import coin_flip
+from utils import coin_flip, compute_ab
 
 
 class SocialAgent(mesa.Agent):
@@ -18,7 +18,6 @@ class SocialAgent(mesa.Agent):
         super().__init__(unique_id, model)
         self.model = model
         self.G = model.G
-        # self.adjacency_matrix = nx.adjacency_matrix(model.G)
         self.agent_type = None
 
         # An agent pays attention to two things: information shared by the unbiased source
@@ -56,16 +55,23 @@ class SocialAgent(mesa.Agent):
         The base class provides the update rules for regular agents and bot followers
         The bot class does not share the same update rule (which will override the base method)
         '''
-        as_from_neighbors = sum(n.a for n in self.get_neighbors())
-        bs_from_neighbors = sum(n.b for n in self.get_neighbors())
+        out_neighbors = self.get_neighbors()
 
-        self.a = (1 - self.influence_of_friends) * \
-            (self.a + self.learn_truth())
-        + self.influence_of_friends * as_from_neighbors
+        if len(out_neighbors) == 0:
+            w = 0
+        else:
+            w = self.influence_of_friends
 
-        self.b = (1 - self.influence_of_friends) * \
-            (self.b + self.learn_truth())
-        + self.influence_of_friends * bs_from_neighbors
+        as_from_neighbors = sum([n.a / len(out_neighbors)
+                                for n in out_neighbors])
+        bs_from_neighbors = sum([n.b / len(out_neighbors)
+                                for n in out_neighbors])
+
+        truth_a, truth_b = self.learn_truth()
+
+        self.a = ((1 - w) * (self.a + truth_a)) + (w * as_from_neighbors)
+
+        self.b = ((1 - w) * (self.b + truth_b)) + (w * bs_from_neighbors)
 
     def learn_truth(self):
         '''
@@ -79,9 +85,10 @@ class SocialAgent(mesa.Agent):
         '''
 
         if binomial(1, 0.5, 1):
-            return config.truth
+            a, b = compute_ab(config.truth)
+            return a, b
         else:
-            return 0
+            return 0, 0
 
     def step(self):
         '''
