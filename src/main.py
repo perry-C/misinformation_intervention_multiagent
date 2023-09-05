@@ -1,19 +1,9 @@
 # %%
 
-import csv
-import pickle
 from os.path import exists
 
-import matplotlib.pyplot as plt
-import networkx as nx
-import numpy as np
-import pandas as pd
-from ipysigma import Sigma
-from scipy.stats import beta
 from tqdm import trange
 
-from network import get_network_stats
-from parameter import AgentParameter
 from social_model import SocialModel
 from utils import *
 
@@ -21,26 +11,69 @@ from utils import *
 
 # get_network_stats(G)
 
+# Specifiy which experiment you want to do
+exps = config.exp
+ws = config.flooding_capacity
+bfps = config.bot_follower_percentage
+nbrs = config.not_ban_range
+ads = config.activation_delays
+iranges = config.inoculation_ranges
 
-for i in trange(10):
-    G = convert_csv_to_graph(
-        f'data/networks/ego_net_test.csv', sep=',', whole=True)
+for exp in exps:
+    for bfp in bfps:
+        for i in trange(config.simulation_number):
+            G = convert_csv_to_graph(f"data/networks/ego_net.csv", sep=",", whole=True)
 
-    result_path = f'data/results/result_test_{i}.csv'
+            # model_df_path = f"data/results/MIM/exp_{exp}_w={w}/result_{i}.csv"
+            # agent_df_path = f"data/results/MIM/exp_{exp}_w={w}/agent_result_{i}.csv"
 
-    # Initialise the agents based on the agent_parameters
-    social_model = SocialModel(G, seed=i, from_scratch=True)
+            model_df_path = f"data/results/MIM/exp_{exp}_bfp={bfp}/result_{i}.csv"
+            agent_df_path = f"data/results/MIM/exp_{exp}_bfp={bfp}/agent_result_{i}.csv"
 
-    for _ in trange(config.simulation_periods):
-        model_df = social_model.data_collector.get_model_vars_dataframe()
-        social_model.step()
-        # agent_dfs = test_model.data_collector.get_agent_vars_dataframe()
+            # model_df_path = f'data/results/MIM/exp_{exp}_b=10/result_{i}.csv'
+            # agent_df_path = f'data/results/MIM/exp_{exp}_b=10/agent_result_{i}.csv'
 
-    model_df['num_bot_followers'] = social_model.num_bot_followers
-    model_df['num_l_bot_followers'] = social_model.num_l_bot_followers
-    model_df['num_r_bot_followers'] = social_model.num_r_bot_followers
+            # model_df_path = f'data/results/MIM/exp_{exp}_br=0.02/result_{i}.csv'
 
-    model_df.to_csv(result_path, index=False)
+            # model_df_path = f'data/results/MIM/exp_{exp}_ad={ad}/result_{i}.csv'
 
+            # model_df_path = f"data/results/MIM/exp_{exp}_irate={irate}/result_{i}.csv"
 
-# print(agent_dfs)
+            # model_df_path = f"data/results/MIM/exp_{exp}_irange={irange[0]}-{irange[1]}/result_{i}.csv"
+
+            # model_df_path = f"data/results/MIM/exp_{exp}_w=25/result_{i}.csv"
+            # agent_df_path = f"data/results/MIM/exp_{exp}_w=25/agent_result_{i}.csv"
+
+            if exists(model_df_path):
+                print(f"{model_df_path} exists, passing")
+                continue
+
+            if exists(agent_df_path):
+                print(f"{agent_df_path} exists, passing")
+                continue
+
+            # Initialise the agents based on the agent_parameters
+            social_model = SocialModel(
+                G,
+                seed=i,
+                exp=exp,
+                flooding_capacity=25,
+                bot_follower_percentage=bfp,
+                activation_delay=0,
+                inoculation_rate=0.2,
+                inoculation_range=[0.2, 0.8],
+                from_scratch=True,
+                param_index=i,
+                collect_agent_data=True,
+            )
+
+            for step in trange(config.simulation_periods):
+                social_model.step()
+
+            model_df = social_model.model_data_collector.get_model_vars_dataframe()
+            model_df.to_csv(model_df_path, index=False)
+
+            agent_df = social_model.agent_data_collector.get_agent_vars_dataframe()
+            agent_df.to_csv(agent_df_path, index=False)
+
+        # print(agent_dfs)

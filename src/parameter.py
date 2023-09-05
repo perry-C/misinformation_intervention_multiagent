@@ -8,7 +8,9 @@ class AgentParameter:
     is for future proofing, in case I would like to keep things random
     '''
 
-    def __init__(self, a, b):
+    def __init__(self, a, b, exp, flooding_capacity, inoculation_range):
         self.a = a
         self.b = b
-        # self.seed = seed
+        self.exp = exp
+        self.flooding_capacity = flooding_capacity
+        self.inoculation_range = inoculation_range

@@ -171,7 +171,7 @@ def modify_reciprocity(G: nx.DiGraph):
 
     bi_edges = list(get_bidirectional_edges(G))
 
-    bi_edge_samples = random.sample(bi_edges, int(len(bi_edges) * 0.80))
+    bi_edge_samples = random.sample(bi_edges, int(len(bi_edges) * 0.70))
 
     for edge in bi_edge_samples:
         u, v = edge
@@ -262,7 +262,7 @@ def get_network_stats(G: nx.Graph, show_graph=False):
     average_degree = sum(
         [y for (x, y) in G.degree]) / G.number_of_nodes()
     average_in_degree = None
-    average_path_length = compute_average_path_length(G)
+    average_path_length = nx.average_shortest_path_length(G)
     if G.is_directed():
 
         if not nx.is_strongly_connected(G):
